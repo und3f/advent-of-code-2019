@@ -122,7 +122,12 @@ IntcodeComputer.prototype.executeNextInstruction = function () {
     return this.position;
 }
 
+IntcodeComputer.prototype.pause = function() {
+    this.stop = true;
+}
+
 IntcodeComputer.prototype.start = function() {
+    this.stop = false;
     while (this.position != -1 && !this.stop) {
         this.executeNextInstruction();
     }
