@@ -2,14 +2,17 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>My first three.js app</title>
+		<title>The N-Body Problem visualization</title>
 		<style>
 			body { margin: 0; }
 			canvas { width: 100%; height: 100% }
 		</style>
 	</head>
 	<body>
-		<script src="https://threejs.org/build/three.js"></script>
+    <label for="speed">Simulation Speed
+      <input type="range" min="1" max="100" value="50" id="speed" />
+    </label>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
 		<script>
 function simulate(moons) {
     for (let i = 0; i < moons.length - 1; i++) {
@@ -36,7 +39,19 @@ function simulate(moons) {
             }
 }
 
+let simulationSpeed = 1;
+let speedEl = document.getElementById("speed");
+function getSimulationSpeed() {
+  simulationSpeed = (speedEl.value / (speedEl.max - speedEl.min + 1)) / 100;
+}
+
+speedEl.onchange = getSimulationSpeed;
+getSimulationSpeed();
+
 var scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x1a1a2a);
+
 var camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 
@@ -57,13 +72,9 @@ let moons = [
 
 let coordinates = ['x', 'y', 'z'];
 
-var sun = new THREE.Mesh(sphereGeometry, new THREE.MeshBasicMaterial({color: 0xffff00}));
-
 const colors = ['aqua', 'bisque', 'brown', 'darkgoldenrod'];
 var moonsObjects = 
   moons.map((moon, i) => {
-    console.log(colors[i]);
-
     let moonObj = new THREE.Mesh(
       sphereGeometry,
       new THREE.MeshBasicMaterial({color: new THREE.Color(colors[i])})
@@ -75,34 +86,50 @@ var moonsObjects =
     return moonObj;
   });
 
-//var cube = new THREE.Mesh( geometry, material );
-//scene.add( cube );
-//scene.add(sun);
 moonsObjects.forEach(moon => scene.add(moon));
 
 //camera.position.x = 0;
 //camera.position.y = 1;
 
-let previousTimestamp;
-function animate(timestamp) {
-	requestAnimationFrame( animate );
-  sun.rotation.x += 0.01;
-  sun.rotation.y += 0.01;
-  camera.position.set(100, 100, 100);
-  camera.lookAt(0, 0, 0);
-  let fraction = timestamp - previousTimestamp || 100;
+camera.position.set(100, 100, 100);
+camera.lookAt(0, 0, 0);
 
-  if (fraction >= 100) {
+let simulations = [];
+function prepareSimulations() {
+  while (simulations.length < 3) {
     simulate(moons);
+    simulations.push(moons.map(moon => moon[0].slice()));
+  }
+}
+
+prepareSimulations();
+
+let previousTimestamp = window.performance.now();
+function animate(timestamp) {
+  let fraction = (timestamp - previousTimestamp) * simulationSpeed;
+
+  //console.log(fraction);
+  if (fraction > 1) {
+    --fraction;
+    simulations.shift();
     previousTimestamp = timestamp;
   }
-  moons.forEach((moon, moonI) => 
-    moon[0].forEach((value, i) => moonsObjects[moonI].position[coordinates[i]] = value));
+  prepareSimulations();
+
+  for (let i = 0; i < moons.length; i++) {
+    let position = simulations[0][i].slice();
+
+    for (let j = 0; j < 3; j++)
+      position[j] += (simulations[1][i][j] - position[j]) * fraction;
+
+    moonsObjects[i].position.set(...position);
+  }
+
+	requestAnimationFrame( animate );
 	renderer.render( scene, camera );
 }
 animate();
 
-camera.position.z = 5;
 		</script>
 	</body>
 </html>
